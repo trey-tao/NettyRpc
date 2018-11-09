@@ -21,15 +21,12 @@ public class Benchmark {
         long startTime = System.currentTimeMillis();
         //benchmark for sync call
         for (int i = 0; i < threadNum; ++i) {
-            threads[i] = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    for (int i = 0; i < requestNum; i++) {
-                        final HelloService syncClient = rpcClient.create(HelloService.class);
-                        String result = syncClient.hello(Integer.toString(i));
-                        if (!result.equals("Hello! " + i))
-                            System.out.print("error = " + result);
-                    }
+            threads[i] = new Thread(() -> {
+                for (int i1 = 0; i1 < requestNum; i1++) {
+                    final HelloService syncClient = rpcClient.create(HelloService.class);
+                    String result = syncClient.hello(Integer.toString(i1));
+                    if (!result.equals("Hello! " + i1))
+                        System.out.print("error = " + result);
                 }
             });
             threads[i].start();

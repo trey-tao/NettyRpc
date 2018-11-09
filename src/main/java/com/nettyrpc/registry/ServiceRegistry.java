@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author huangyong
  * @author luxiaoxun
+ * @author trey
  */
 public class ServiceRegistry {
 
@@ -34,21 +35,23 @@ public class ServiceRegistry {
         if (data != null) {
             ZooKeeper zk = connectServer();
             if (zk != null) {
-                AddRootNode(zk); // Add root node if not exist
+                // Add root node if not exist
+                AddRootNode(zk);
                 createNode(zk, data);
             }
         }
     }
 
+    /**
+     * 连接zk服务
+     * @return
+     */
     private ZooKeeper connectServer() {
         ZooKeeper zk = null;
         try {
-            zk = new ZooKeeper(registryAddress, Constant.ZK_SESSION_TIMEOUT, new Watcher() {
-                @Override
-                public void process(WatchedEvent event) {
-                    if (event.getState() == Event.KeeperState.SyncConnected) {
-                        latch.countDown();
-                    }
+            zk = new ZooKeeper(registryAddress, Constant.ZK_SESSION_TIMEOUT, event -> {
+                if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
+                    latch.countDown();
                 }
             });
             latch.await();
@@ -61,6 +64,10 @@ public class ServiceRegistry {
         return zk;
     }
 
+    /**
+     * 添加root节点：/registry，可能此时zk还没有任何服务注册过，此时还没有registry节点，需要创建下
+     * @param zk
+     */
     private void AddRootNode(ZooKeeper zk){
         try {
             Stat s = zk.exists(Constant.ZK_REGISTRY_PATH, false);
@@ -74,6 +81,11 @@ public class ServiceRegistry {
         }
     }
 
+    /**
+     * 注册本地rpc 服务的地址
+     * @param zk
+     * @param data：ip地址
+     */
     private void createNode(ZooKeeper zk, String data) {
         try {
             byte[] bytes = data.getBytes();

@@ -28,6 +28,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
 /**
+ * 实现接口：【ApplicationContextAware】springboot启动时，会执行setApplicationContext()方法
  * RPC Server
  *
  * @author huangyong, luxiaoxun
@@ -54,8 +55,14 @@ public class RpcServer implements ApplicationContextAware, InitializingBean {
         this.serviceRegistry = serviceRegistry;
     }
 
+    /**
+     * spring容器初始化时，执行
+     * @param ctx
+     * @throws BeansException
+     */
     @Override
     public void setApplicationContext(ApplicationContext ctx) throws BeansException {
+        // 从应用上下文拿到所有加了@RpcService注解的Bean
         Map<String, Object> serviceBeanMap = ctx.getBeansWithAnnotation(RpcService.class);
         if (MapUtils.isNotEmpty(serviceBeanMap)) {
             for (Object serviceBean : serviceBeanMap.values()) {
@@ -66,6 +73,10 @@ public class RpcServer implements ApplicationContextAware, InitializingBean {
         }
     }
 
+    /**
+     * 当前bean初始化时，调用此方法
+     * @throws Exception
+     */
     @Override
     public void afterPropertiesSet() throws Exception {
         start();
@@ -101,6 +112,10 @@ public class RpcServer implements ApplicationContextAware, InitializingBean {
         return this;
     }
 
+    /**
+     * 初始化的动作就是基于netty，将netty的boss线程组和worker线程组建立好
+     * @throws Exception
+     */
     public void start() throws Exception {
         if (bossGroup == null && workerGroup == null) {
             bossGroup = new NioEventLoopGroup();
@@ -109,6 +124,7 @@ public class RpcServer implements ApplicationContextAware, InitializingBean {
             bootstrap.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
+                        // 利用SocketChannel通道，将编码器、解码器、对应的注册服务都注册上来
                         public void initChannel(SocketChannel channel) throws Exception {
                             channel.pipeline()
                                     .addLast(new LengthFieldBasedFrameDecoder(65536, 0, 4, 0, 0))

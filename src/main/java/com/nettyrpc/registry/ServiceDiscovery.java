@@ -15,10 +15,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 服务发现
+ * 服务发现【面向客户端】
  *
  * @author huangyong
  * @author luxiaoxun
+ * @author trey
  */
 public class ServiceDiscovery {
 
@@ -31,6 +32,11 @@ public class ServiceDiscovery {
     private String registryAddress;
     private ZooKeeper zookeeper;
 
+    /**
+     * 核心方法
+     *  rpc调用方连接zk
+     * @return
+     */
     public ServiceDiscovery(String registryAddress) {
         this.registryAddress = registryAddress;
         zookeeper = connectServer();
@@ -38,6 +44,7 @@ public class ServiceDiscovery {
             watchNode(zookeeper);
         }
     }
+
 
     public String discover() {
         String data = null;
@@ -57,12 +64,9 @@ public class ServiceDiscovery {
     private ZooKeeper connectServer() {
         ZooKeeper zk = null;
         try {
-            zk = new ZooKeeper(registryAddress, Constant.ZK_SESSION_TIMEOUT, new Watcher() {
-                @Override
-                public void process(WatchedEvent event) {
-                    if (event.getState() == Event.KeeperState.SyncConnected) {
-                        latch.countDown();
-                    }
+            zk = new ZooKeeper(registryAddress, Constant.ZK_SESSION_TIMEOUT, event -> {
+                if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
+                    latch.countDown();
                 }
             });
             latch.await();
@@ -74,12 +78,9 @@ public class ServiceDiscovery {
 
     private void watchNode(final ZooKeeper zk) {
         try {
-            List<String> nodeList = zk.getChildren(Constant.ZK_REGISTRY_PATH, new Watcher() {
-                @Override
-                public void process(WatchedEvent event) {
-                    if (event.getType() == Event.EventType.NodeChildrenChanged) {
-                        watchNode(zk);
-                    }
+            List<String> nodeList = zk.getChildren(Constant.ZK_REGISTRY_PATH, event -> {
+                if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                    watchNode(zk);
                 }
             });
             List<String> dataList = new ArrayList<>();
